@@ -1,0 +1,4 @@
+.venv/
+.env
+data/data.db
+data/logs.log

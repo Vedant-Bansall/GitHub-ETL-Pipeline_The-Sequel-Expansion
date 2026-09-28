@@ -1,0 +1,19 @@
+# GitHub Multi-Repo Analytics Configuration
+
+# Global Ingestion Settings
+settings:
+  storage_path: "data/parquet"
+  fetch_issues: true              
+  fetch_pull_requests: true
+  lookback_days: 90
+
+# Target Repositories to Track
+repositories:
+# Example to track your own repos
+# - name: owner/repo
+#   enabled: true (or false if you don't want to track)
+#   description: "Description on why you want to or don't want to track"
+
+  - name: "pallets/flask"
+    enabled: True
+    description: "Primary Test Repo"
