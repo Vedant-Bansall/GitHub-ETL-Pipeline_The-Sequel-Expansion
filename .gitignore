@@ -2,3 +2,5 @@
 .env
 data/data.db
 data/logs.log
+timestamp.txt
+__pycache__

@@ -17,3 +17,7 @@ repositories:
   - name: "pallets/flask"
     enabled: True
     description: "Primary Test Repo"
+
+  - name: "fastapi/fastapi-cli"
+    enabled: True
+    description: "Secondary Test Repo"

@@ -19,7 +19,7 @@ class Base(DeclarativeBase):
 association_table = Table(
     "association_table",
     Base.metadata,
-    Column("record_id", ForeignKey("record.id")),
+    Column("record_id", ForeignKey("record.composite_key")),
     Column("label_id", ForeignKey("label.id"))
 )
 
@@ -28,7 +28,9 @@ class Record(Base):
     __tablename__ = "record"
 
     # Columns
-    id: Mapped[int] = mapped_column(primary_key=True)
+    composite_key: Mapped[str] = mapped_column(primary_key=True)
+    repo_id: Mapped[int] = mapped_column()
+    id: Mapped[int] = mapped_column()
     number: Mapped[int] = mapped_column()
     title: Mapped[str] = mapped_column()
     author: Mapped[str] = mapped_column()
@@ -68,7 +70,8 @@ def load_data(dataset: list):
     with Session(engine) as session:
         for item in dataset:
             # Updates if exists
-            existing_record = session.get(Record, item["id"])
+            comp_key = str(item["repo_id"]) + "::" + str(item["id"])
+            existing_record = session.get(Record, comp_key)
             if existing_record:
                 existing_record.number = item["number"]
                 existing_record.title = item["title"]
@@ -91,6 +94,8 @@ def load_data(dataset: list):
             # Inserts if new
             else:
                 add_issue = Record(
+                    composite_key=comp_key,
+                    repo_id=item["repo_id"],
                     id=item["id"],
                     number=item["number"],
                     title=item["title"],
@@ -149,12 +154,9 @@ def load_yaml_data():
         return names_list # Return list once complete for data_to_parquet to use
 
 # Load data as parquet file
-def data_to_parquet(dataset, iteration_var):
+def data_to_parquet(dataset: list, owner: str, repo: str):
     # DataFrame
     df = pd.DataFrame(dataset)
-
-    # Getting specific owner, repo pair
-    owner, repo = load_yaml_data()[iteration_var]
 
     # Getting Timestamp as format
     ts = datetime.now(timezone.utc)
@@ -165,10 +167,12 @@ def data_to_parquet(dataset, iteration_var):
 
     # Making path
     pq_dir_path = "data/parquet"
-    pq_dir = Path(pq_dir_path/subdir_name) 
+    pq_dir = Path(pq_dir_path)
+    pq_subdir = pq_dir.joinpath(subdir_name) 
 
     filename = f"github_data_{tsft}.parquet"
-    combined_path = os.path.join(str(pq_dir), filename)
+    combined_path = os.path.join(str(pq_subdir), filename)
 
     # Export to parquet
+    pq_subdir.mkdir(exist_ok=True)
     df.to_parquet(combined_path)

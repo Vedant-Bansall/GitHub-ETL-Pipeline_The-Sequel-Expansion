@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 
 # Transform Data
-def transform_data(issue_list: list, pr_list: list) -> list:
+def transform_data(issue_list: list, pr_list: list, repo_id: int) -> list:
     # Transformed Issues Data, flattened and filtered out, easier readability and better for analysis
     transformed_issues = []
 
@@ -44,7 +44,8 @@ def transform_data(issue_list: list, pr_list: list) -> list:
         issue_labels = [label["name"] for label in issue.get("labels") or []]
 
         # Create filtered issue
-        transformed_issues.append({"id": issue.get("id"),
+        transformed_issues.append({"repo_id": repo_id,
+                                "id": issue.get("id"),
                                 "number": issue.get("number"),
                                 "title": issue.get("title"),
                                 "author": author,
@@ -113,7 +114,8 @@ def transform_data(issue_list: list, pr_list: list) -> list:
         # Label Assignment
         pr_labels = [label["name"] for label in pr.get("labels") or []]
 
-        transformed_prs.append({"id": pr.get("id"),
+        transformed_prs.append({"repo_id": repo_id,
+                                "id": pr.get("id"),
                                 "number": pr.get("number"),
                                 "title": pr.get("title"),
                                 "author": author,

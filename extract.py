@@ -94,7 +94,7 @@ def extract_data(
 
         query_paramaters = None  # Reset params
 
-        master_list.extend(response_json)  # Add to all
+        master_list.extend(response_json) # Add to all
 
         link = response.headers.get("Link")
 
@@ -207,4 +207,9 @@ def extract_data(
         else:
             pull_url = None
 
-    return standard_issues, pull_list  # Returns items to be used
+    # Get repo id:
+    repo_response = requests.get(f"https://api.github.com/repos/{owner}/{repo}", headers=headers)
+    repo_response_json = repo_response.json()
+    repo_id = repo_response_json["id"]
+
+    return standard_issues, pull_list, repo_id  # Returns items to be used
