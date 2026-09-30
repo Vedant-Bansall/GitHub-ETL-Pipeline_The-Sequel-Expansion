@@ -1,6 +1,7 @@
 # Imports
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,6 +11,12 @@ import yaml
 from sqlalchemy import Column, ForeignKey, Table, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
 
+logging.basicConfig(filename="data/logs.log", level=logging.INFO, format="%(asctime)s; %(name)s, %(levelname)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S", encoding="UTF-8")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+class LoadError(Exception):
+    pass
 
 # Base class
 class Base(DeclarativeBase):
@@ -59,7 +66,11 @@ class Label(Base):
     name: Mapped[str] = mapped_column(unique=True)
 
 # Load Data
-def load_data(dataset: list):
+def load_data(dataset: list, owner: str, repo: str):
+    # Log Repo Start
+    start = datetime.now(timezone.utc)
+    logger.info(f"{owner}/{repo} run load started")
+
     # Create Engine
     engine = create_engine("sqlite:///data/data.db")
 
@@ -68,6 +79,8 @@ def load_data(dataset: list):
 
     # Create Session
     with Session(engine) as session:
+        update_cnt = 0
+        insert_cnt = 0
         for item in dataset:
             # Updates if exists
             comp_key = str(item["repo_id"]) + "::" + str(item["id"])
@@ -90,6 +103,8 @@ def load_data(dataset: list):
                 existing_record.lead_time_days = item["lead_time_days"]
                 existing_record.is_stale = item["is_stale"]
                 existing_record.entity_type = item["entity_type"]
+
+                update_cnt += 1 # Updates Update Counter
 
             # Inserts if new
             else:
@@ -119,6 +134,8 @@ def load_data(dataset: list):
                 session.add(add_issue)
                 existing_record = add_issue
 
+                insert_cnt += 1
+
             # Add Labels
             for l in item["labels"]:
                 stmt = select(Label).where(Label.name == l)
@@ -131,13 +148,27 @@ def load_data(dataset: list):
                 else:
                     existing_record.labels.append(label)
 
-        # Commit session
-        session.commit()
+        logger.debug(f"Inserted {insert_cnt} items and Updated {update_cnt} items")
+
+        try:
+            # Commit session
+            session.commit()
+            logger.info(f"Loaded Contents of {owner}/{repo} Successfully")
+
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"An ERROR occured while Loading: {e!s}")
+            raise LoadError("Unable to Load:", str(e))
+
+    # Log repo end
+    end = datetime.now(timezone.utc)
+    logger.info(f"{owner}/{repo} run load ended")
+    logger.info(f"Load elapse time took {(end - start).total_seconds()} seconds")
 
     # Make most recent run time
     with open("timestamp.txt", "w") as tstxt:
         ts = datetime.now(timezone.utc)
         tstxt.write(ts.isoformat())
+    logger.debug(f"Run From timestamp updated to {ts}")
 
 def load_yaml_data():
     with open("config.yaml") as config:
@@ -155,6 +186,10 @@ def load_yaml_data():
 
 # Load data as parquet file
 def data_to_parquet(dataset: list, owner: str, repo: str):
+    # Log Repo Start
+    start = datetime.now(timezone.utc)
+    logger.info(f"{owner}/{repo} run load started")
+    
     # DataFrame
     df = pd.DataFrame(dataset)
 
@@ -176,3 +211,9 @@ def data_to_parquet(dataset: list, owner: str, repo: str):
     # Export to parquet
     pq_subdir.mkdir(exist_ok=True)
     df.to_parquet(combined_path)
+    logger.info(f"{filename} containing most recent information about {owner}/{repo} exported to {pq_subdir!s}")
+
+    # Log Repo end
+    end = datetime.now(timezone.utc)
+    logger.info(f"{owner}/{repo} run load ended")
+    logger.info(f"Load elapse time took {(end - start).total_seconds()} seconds")

@@ -4,3 +4,4 @@ data/data.db
 data/logs.log
 timestamp.txt
 __pycache__
+data/parquet/*.parquet

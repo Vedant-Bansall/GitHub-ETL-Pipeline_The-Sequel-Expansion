@@ -1,8 +1,12 @@
 # Imports
+import logging
 from datetime import datetime, timezone
 
 import requests
 
+logging.basicConfig(filename="data/logs.log", level=logging.INFO, format="%(asctime)s; %(name)s, %(levelname)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S", encoding="UTF-8")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Custom Errors
 class ExtractionError(Exception):
@@ -33,6 +37,10 @@ def extract_data(
     target_dt: datetime,
 ) -> tuple[list, list]:
     ## Issues
+    # Log Repo Run
+    start = datetime.now(timezone.utc)
+    logger.info(f"{owner}/{repo} run extract started")
+
     # Create Response params
     url = f"https://api.github.com/repos/{owner}/{repo}/issues"
     headers = {
@@ -67,26 +75,27 @@ def extract_data(
                     int(reset_time), tz=timezone.utc
                 )
                 if int(remaining) < 20 and int(remaining) != 0:
-                    print(
-                        f"You do not have many Requests left, you only have {int(remaining)} remaining"
-                    )
+                    logger.warning(f"You do not have many Requests left, you only have {int(remaining)} remaining")
+                    print(f"You do not have many Requests left, you only have {int(remaining)} remaining")
                 elif int(remaining) <= 0:
+                    logger.warning("You have no more requests remaining")
                     raise LimitError("You have no more requests remaining")
                 else:
                     print(f"Rate Limit: {remaining}/{limit} remaining (Used: {used})")
                     print(f"Resets at (epoch timestamp): {reset_readable}")
             else:
-                raise ExtractionError(
-                    "You have no more requests remaining or a serverside error happened"
-                )
+                logger.error("You have no more requests remaining or a serverside error happened")
+                raise ExtractionError("You have no more requests remaining or a serverside error happened")
 
         # Raise Errors:
         except requests.exceptions.HTTPError as e:
             status = e.response.status_code if e.response is not None else "Unknown"
             if status in [403, 429]:
+                logger.error(f"Rate Limit Exceeded or access forbidden: {status}")
                 raise LimitError(f"Rate Limit Exceeded or access forbidden: {status}")
 
             else:
+                logger.error(f"HTTP Error Occured: {status}")
                 raise ServerIssueError(f"HTTP Error Occured: {status}")
 
         except requests.exceptions.RequestException:
@@ -150,29 +159,31 @@ def extract_data(
                     int(reset_time), tz=timezone.utc
                 )
                 if int(remaining) < 20 and int(remaining) != 0:
-                    print(
-                        f"You do not have many Requests left, you only have {int(remaining)} remaining"
-                    )
+                    logger.warning(f"You do not have many Requests left, you only have {int(remaining)} remaining")
+                    print(f"You do not have many Requests left, you only have {int(remaining)} remaining")
                 elif int(remaining) <= 0:
+                    logger.error("You have no more requests remaining")
                     raise LimitError("You have no more requests remaining")
                 else:
                     print(f"Rate Limit: {remaining}/{limit} remaining (Used: {used})")
                     print(f"Resets at (epoch timestamp): {reset_readable}")
             else:
-                raise ExtractionError(
-                    "You have no more requests remaining or a serverside error happened"
-                )
+                logger.error("You have no more requests remaining or a serverside error happened")
+                raise ExtractionError("You have no more requests remaining or a serverside error happened")
 
         # Raise Errors
         except requests.exceptions.HTTPError as e:
             status = e.response.status_code if e.response is not None else "Unknown"
             if status in [403, 429]:
+                logger.error(f"Rate Limit Exceeded or access forbidden: {status}")
                 raise LimitError(f"Rate Limit Exceeded or access forbidden: {status}")
 
             else:
+                logger.error(f"HTTP Error Occured: {status}")
                 raise ServerIssueError(f"HTTP Error Occured: {status}")
 
         except requests.exceptions.RequestException:
+            logger.error("Serverside Error")
             raise ServerIssueError("Serverside Error")
 
         pull_query_paramaters = None  # Reset Params
@@ -211,5 +222,10 @@ def extract_data(
     repo_response = requests.get(f"https://api.github.com/repos/{owner}/{repo}", headers=headers)
     repo_response_json = repo_response.json()
     repo_id = repo_response_json["id"]
+
+    # Log repo end
+    end = datetime.now(timezone.utc)
+    logger.info(f"{owner}/{repo} run extract ended")
+    logger.info(f"Extract elapse time took {(end - start).total_seconds()} seconds")
 
     return standard_issues, pull_list, repo_id  # Returns items to be used

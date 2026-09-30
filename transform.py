@@ -1,9 +1,17 @@
 # Imports
+import logging
 from datetime import datetime, timezone
 
+logging.basicConfig(filename="data/logs.log", level=logging.INFO, format="%(asctime)s; %(name)s, %(levelname)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S", encoding="UTF-8")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Transform Data
-def transform_data(issue_list: list, pr_list: list, repo_id: int) -> list:
+def transform_data(issue_list: list, pr_list: list, repo_id: int, owner: str, repo: str) -> list:
+    # Log Repo Start
+    start = datetime.now(timezone.utc)
+    logger.info(f"{owner}/{repo} run transform started")
+
     # Transformed Issues Data, flattened and filtered out, easier readability and better for analysis
     transformed_issues = []
 
@@ -136,4 +144,10 @@ def transform_data(issue_list: list, pr_list: list, repo_id: int) -> list:
                                 "entity_type": "PullRequest"})
 
     transformed_dataset = transformed_prs + transformed_issues
+
+    # Log repo end
+    end = datetime.now(timezone.utc)
+    logger.info(f"{owner}/{repo} run transform ended")
+    logger.info(f"Transform elapse time took {(end - start).total_seconds()} seconds")
+
     return transformed_dataset
