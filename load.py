@@ -209,6 +209,7 @@ def data_to_parquet(dataset: list, owner: str, repo: str):
     combined_path = os.path.join(str(pq_subdir), filename)
 
     # Export to parquet
+    Path(pq_dir_path).mkdir(exist_ok=True)
     pq_subdir.mkdir(exist_ok=True)
     df.to_parquet(combined_path)
     logger.info(f"{filename} containing most recent information about {owner}/{repo} exported to {pq_subdir!s}")
