@@ -168,6 +168,10 @@ def main():
             histogram_fig = px.histogram(filtered_df["lead_time_days"].dropna(), x="lead_time_days", text_auto=True, labels={"lead_time_days": "Lead Time (Days)", "count": "Total Items"}, title="Lead Time Distribution")
             st.plotly_chart(histogram_fig, use_container_width=True)
 
+            # Chart of PRs and issues in each repo's files
+            st.subheader("Amount of PRs and issues recorded per file")
+            st.bar_chart(df_all["repo"].value_counts(), x_label="File", y_label="Amounts")
+
         # Total Issue/PR over time
         if selected_entity:
             filtered_df_all = df_all[df_all["entity_type"].isin(selected_entity)]
